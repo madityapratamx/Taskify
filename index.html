@@ -177,7 +177,7 @@ return`<h1>Laporan Produktivitas</h1><div class="card"><div class="stat"><b>${D.
 <div class="card"><div class="row sp"><b>Skor Produktivitas</b><b>${sc}/100</b></div><div class="bar" style="margin:8px 0"><i style="width:${sc}%"></i></div><span class="chip">${lb}</span><div class="meta">Dihitung dari persentase tugas yang sudah selesai.</div></div>
 <button class="btn" data-a="csv">Ekspor Riwayat Tugas (CSV)</button>`}
 function sw(k,on,t,s){return`<div class="set row sp"><div><b>${t}</b><small>${s}</small></div><button class="sw ${on?'on':''}" role="switch" aria-checked="${on}" data-a="${k}" aria-label="${t}"></button></div>`}
-function settings(){return`<h1>Pengaturan</h1><div class="card"><div class="row sp"><div><b>Akun</b><small style="display:block;color:var(--mu);font-size:13px">${S.auth==='user'?'Masuk sebagai '+esc(S.email):'Mode offline (data hanya di perangkat ini)'}</small></div><button class="btn ${S.auth==='user'?'danger':''} sm" data-a="logout">${S.auth==='user'?'Keluar':'Masuk / Daftar'}</button></div></div><div class="card">
+function settings(){return`<h1>Pengaturan</h1><div class="card"><div class="row sp"><div><b>Akun</b><small style="display:block;color:var(--mu);font-size:13px">${S.auth==='user'?'Masuk sebagai '+esc(S.email):'Mode offline (data hanya di perangkat ini)'}</small></div><button class="btn ${S.auth==='user'?'danger':''} sm" data-a="logout">${S.auth==='user'?'Keluar':'Masuk / Daftar'}</button></div>${S.auth==='user'?rcBlock():''}</div><div class="card">
 ${sw('notif',S.notif,'Pengingat & Notifikasi','Pengingat deadline dan tugas terlewat')}${sw('theme',S.dark,'Mode Gelap','Tampilan gelap untuk mata')}${sw('gcal',S.gcal,'Google Calendar',S.gcal?'Terhubung (simulasi)':'Hubungkan untuk sinkron jadwal')}
 <div class="set"><b>Nama Pengguna</b><input type="text" id="nm" value="${esc(S.name)}" maxlength="30" style="margin-top:6px"></div></div>
 <div class="card"><b>Kategori & Label Kustom</b><div class="meta" style="margin:8px 0">${S.cats.map((c,i)=>`<span class="chip">${esc(c)} <button data-a="dcat" data-i="${i}" aria-label="Hapus kategori ${esc(c)}">✕</button></span>`).join('')}</div>
@@ -189,10 +189,10 @@ if(page==='add'&&!draft)draft=newDraft();
 $('#app').innerHTML={home,add,board,report,set:settings}[page]();
 document.querySelectorAll('.nav button[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
 hero()}
-function go(p){page=p;if(p==='add')draft=newDraft();scrollTo(0,0);render()}
+function go(p){page=p;shownCode='';if(p==='add')draft=newDraft();scrollTo(0,0);render()}
 function addTask(o){S.tasks.push({id:nid(),title:o.title,cat:o.cat,pri:o.pri,due:new Date(o.due).toISOString(),status:'todo',subs:o.subs||[],notes:o.notes||'',doneAt:null});save()}
 
-let view=null;const UK='taskify.users';
+let view=null;const UK='taskify.users';let pendLogin=null,shownCode='';
 const users=()=>{try{return JSON.parse(localStorage.getItem(UK))||{}}catch(e){return{}}};
 const putUsers=u=>{try{localStorage.setItem(UK,JSON.stringify(u))}catch(e){}};
 async function hash(pw,salt){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+pw));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of salt+pw)h=(h*33)^c.charCodeAt(0);return'x'+(h>>>0).toString(16)}}
@@ -200,20 +200,37 @@ const showErr=m=>{const e=$('#err');if(e)e.textContent=m};
 const PROV=['gmail.com','googlemail.com','yahoo.com','yahoo.co.id','ymail.com','outlook.com','hotmail.com','live.com','msn.com','icloud.com','me.com','proton.me','protonmail.com','zoho.com','gmx.com','aol.com','mail.com'];
 const INST=/\.(ac\.id|sch\.id|go\.id|mil\.id|edu|edu\.[a-z]{2}|ac\.[a-z]{2})$/;
 function okMail(v){const m=/^([a-z0-9][a-z0-9._+-]{1,62}[a-z0-9])@([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/.exec(v);if(!m||/\.\./.test(m[1]))return false;return PROV.includes(m[2])||INST.test(m[2])}
+const RC_ALPHA='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newCode(){let o='';while(o.length<8){const b=crypto.getRandomValues(new Uint8Array(16));for(const x of b){if(x<248&&o.length<8)o+=RC_ALPHA[x%31]}}return o}
+const fmtCode=c=>c.slice(0,4)+'-'+c.slice(4);
+const normCode=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const newSalt=()=>Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+function showRecovery(email,name,code,msg){pendLogin={email,name,msg,code:fmtCode(code)};view='recovery';render()}
+function rcBlock(){const u=users()[S.email];return`<div class="set row sp" style="margin-top:10px"><div><b>Kode Pemulihan</b><small>${u&&u.rh?'Aktif. Buat kode baru jika kode lama hilang.':'Belum ada. Buat kode agar bisa reset kata sandi.'}</small></div><button class="btn ghost sm" data-a="mkrc">${u&&u.rh?'Buat Baru':'Buat Kode'}</button></div>${shownCode?`<div class="banner" style="margin-top:10px">Kode pemulihan baru Anda: <b style="letter-spacing:2px">${shownCode}</b><br><small>Simpan sekarang, kode ini tidak ditampilkan lagi.</small><br><button class="btn sm" data-a="copyrc" style="margin-top:6px">Salin kode</button></div>`:''}`}
 function loggedIn(email,name,msg){S=load('user',email);if(!S.name||S.name==='Pengguna')S.name=name;mark();save();view=null;page='home';draft=null;render();toast(msg||'Selamat datang, '+S.name+'!')}
 async function authGo(){
  const em=($('#ae')||{value:''}).value.trim().toLowerCase(),pw=($('#ap')||{value:''}).value,nm=($('#an')||{value:''}).value.trim(),cf=($('#ac')||{value:''}).value;
  if(!okMail(em))return showErr('Email tidak valid atau domainnya tidak dikenali. Gunakan Gmail, Yahoo, Outlook, iCloud, Proton, atau email kampus/sekolah (.ac.id, .sch.id, .edu).');
  const U=users();
- if(view==='google'){if(!/@(gmail|googlemail)\.com$/.test(em)&&!INST.test(em.split('@')[1]))return showErr('Akun Google harus memakai Gmail atau email kampus/sekolah.');const n=em.split('@')[0].replace(/[._-]+/g,' ');const name=(U[em]&&U[em].name)||n.replace(/\b\w/g,c=>c.toUpperCase());return loggedIn(em,name,'Masuk dengan Google (simulasi) berhasil')}
  if(!pw)return showErr('Kata sandi wajib diisi.');
+ if(view==='forgot'){
+  const rc=normCode(($('#ar')||{value:''}).value),u=U[em],gen='Email atau kode pemulihan salah.';
+  if(rc.length!==8)return showErr('Masukkan kode pemulihan (8 karakter).');
+  if(pw.length<6)return showErr('Kata sandi baru minimal 6 karakter.');
+  if(pw!==cf)return showErr('Konfirmasi kata sandi tidak cocok.');
+  if(u&&u.lock&&u.lock>Date.now())return showErr('Terlalu banyak percobaan. Coba lagi dalam '+Math.ceil((u.lock-Date.now())/60000)+' menit.');
+  if(!u)return showErr(gen);
+  if(!u.rh)return showErr('Akun ini dibuat sebelum fitur pemulihan dan belum punya kode pemulihan. Masuk dengan kata sandi lama lalu buat kode di Pengaturan, atau daftar dengan email lain.');
+  if(u.rh!==await hash(rc,u.rs)){u.fails=(u.fails||0)+1;if(u.fails>=5){u.lock=Date.now()+5*60000;u.fails=0}putUsers(U);return showErr(gen)}
+  const code=newCode();u.salt=newSalt();u.h=await hash(pw,u.salt);u.rs=newSalt();u.rh=await hash(code,u.rs);u.fails=0;u.lock=0;putUsers(U);
+  return showRecovery(em,u.name,code,'Kata sandi berhasil diganti. Selamat datang kembali!')}
  if(view==='register'){
   if(!nm)return showErr('Nama lengkap wajib diisi.');
   if(pw.length<6)return showErr('Kata sandi minimal 6 karakter.');
   if(pw!==cf)return showErr('Konfirmasi kata sandi tidak cocok.');
   if(U[em])return showErr('Email sudah terdaftar. Silakan masuk.');
-  const salt=Math.random().toString(36).slice(2);U[em]={name:nm,salt,h:await hash(pw,salt)};putUsers(U);
-  return loggedIn(em,nm,'Akun berhasil dibuat. Selamat datang, '+nm+'!')}
+  const code=newCode(),salt=newSalt(),rs=newSalt();U[em]={name:nm,salt,h:await hash(pw,salt),rs,rh:await hash(code,rs)};putUsers(U);
+  return showRecovery(em,nm,code,'Akun berhasil dibuat. Selamat datang, '+nm+'!')}
  const u=U[em];
  if(!u||u.h!==await hash(pw,u.salt))return showErr('Email atau kata sandi salah.');
  loggedIn(em,u.name)}
@@ -221,25 +238,36 @@ function hero(){const h=$('#hero');if(S.auth){h.hidden=true;h.innerHTML='';retur
  h.hidden=false;if(!view)view=seen()?'login':'intro';
  const eye='<button type="button" data-a="eye" aria-label="Tampilkan atau sembunyikan kata sandi">Lihat</button>';
  if(view==='intro'){h.innerHTML=`<div><div style="font-size:54px">✅</div><h1>Taskify</h1><p>Susun Tugas, Tuntaskan Target<br>Buat papan tugas pertamamu</p><button class="btn" data-a="begin">Mulai Sekarang</button></div>`;return}
- const reg=view==='register',goo=view==='google';
- h.innerHTML=`<div><div class="logo">✅ Taskify</div><h2>${goo?'Masuk dengan Google':reg?'Buat akun baru':'Selamat datang kembali'}</h2><p style="margin-bottom:14px">${goo?'Simulasi: masukkan email Google Anda.':reg?'Daftar untuk sinkronisasi antar-perangkat.':'Masuk untuk melanjutkan tugas Anda.'}</p>
- ${goo?'':'<button class="btn ghost" data-a="google" type="button">G&nbsp; Masuk dengan Google</button><div class="or">atau dengan email</div>'}
+ if(view==='recovery'){h.innerHTML=`<div><div class="logo">✅ Taskify</div><h2>Simpan kode pemulihan</h2><p style="margin-bottom:14px">Kode ini dipakai untuk membuat kata sandi baru jika Anda lupa. Kode tidak akan ditampilkan lagi, jadi catat atau salin sekarang.</p><div class="card" style="font-size:28px;font-weight:700;letter-spacing:4px;text-align:center;user-select:all">${esc(pendLogin.code)}</div><button class="btn ghost" data-a="copyrc" type="button" style="margin-bottom:10px">Salin kode</button><button class="btn" data-a="rcdone" type="button">Saya sudah menyimpan kode</button></div>`;return}
+ if(view==='forgot'){h.innerHTML=`<div><div class="logo">✅ Taskify</div><h2>Lupa kata sandi</h2><p style="margin-bottom:14px">Masukkan email dan kode pemulihan yang Anda simpan saat mendaftar, lalu buat kata sandi baru.</p>
+ <form id="af" novalidate><label class="f" for="ae">Email</label><input type="email" id="ae" autocomplete="email" placeholder="nama@email.com">
+ <label class="f" for="ar">Kode pemulihan</label><input type="text" id="ar" autocomplete="off" maxlength="9" placeholder="ABCD-EFGH" style="text-transform:uppercase;letter-spacing:2px">
+ <label class="f" for="ap">Kata sandi baru</label><div class="pw"><input type="password" id="ap" autocomplete="new-password">${eye}</div>
+ <label class="f" for="ac">Ulangi kata sandi baru</label><input type="password" id="ac" autocomplete="new-password">
+ <div class="err" id="err" role="alert"></div><button class="btn" type="submit">Ganti Kata Sandi</button></form>
+ <p style="margin:14px 0 0"><button class="lnk" data-a="vw" data-v="login" type="button">← Kembali ke Masuk</button></p>
+ <p style="margin:10px 0 0;font-size:13px;color:var(--mu)">Akun disimpan di browser ini tanpa server, jadi reset lewat email tidak tersedia. Tanpa kode pemulihan, akun tidak bisa dipulihkan.</p></div>`;const e0=$('#ae');if(e0)e0.focus();return}
+ const reg=view==='register';
+ h.innerHTML=`<div><div class="logo">✅ Taskify</div><h2>${reg?'Buat akun baru':'Selamat datang kembali'}</h2><p style="margin-bottom:14px">${reg?'Daftar untuk sinkronisasi antar-perangkat.':'Masuk untuk melanjutkan tugas Anda.'}</p>
  <form id="af" novalidate>
  ${reg?'<label class="f" for="an">Nama lengkap</label><input type="text" id="an" autocomplete="name" maxlength="40">':''}
  <label class="f" for="ae">Email</label><input type="email" id="ae" autocomplete="email" placeholder="nama@email.com">
- ${goo?'':`<label class="f" for="ap">Kata sandi</label><div class="pw"><input type="password" id="ap" autocomplete="${reg?'new-password':'current-password'}">${eye}</div>`}
+ ${`<label class="f" for="ap">Kata sandi</label><div class="pw"><input type="password" id="ap" autocomplete="${reg?'new-password':'current-password'}">${eye}</div>`}
+ ${reg?'':'<div style="text-align:right;margin-top:4px"><button class="lnk" data-a="vw" data-v="forgot" type="button">Lupa kata sandi?</button></div>'}
  ${reg?'<label class="f" for="ac">Ulangi kata sandi</label><input type="password" id="ac" autocomplete="new-password">':''}
  <div class="err" id="err" role="alert"></div>
- <button class="btn" type="submit">${goo?'Lanjutkan':reg?'Daftar':'Masuk'}</button></form>
- <p style="margin:14px 0 0">${goo?'<button class="lnk" data-a="vw" data-v="login">← Kembali</button>':reg?'Sudah punya akun? <button class="lnk" data-a="vw" data-v="login">Masuk</button>':'Belum punya akun? <button class="lnk" data-a="vw" data-v="register">Daftar</button>'}</p>
+ <button class="btn" type="submit">${reg?'Daftar':'Masuk'}</button></form>
+ <p style="margin:14px 0 0">${reg?'Sudah punya akun? <button class="lnk" data-a="vw" data-v="login">Masuk</button>':'Belum punya akun? <button class="lnk" data-a="vw" data-v="register">Daftar</button>'}</p>
  <div class="or">atau</div><button class="btn ghost" data-a="guest" type="button">Lewati Login (mode offline)</button></div>`;
  const f=$('#ae');if(f&&!matchMedia('(pointer:coarse)').matches)f.focus()}
 document.addEventListener('submit',e=>{if(e.target.id==='af'){e.preventDefault();authGo()}});
 const A={
 go:e=>go(e.dataset.p),begin:()=>{mark();view='login';render()},
 guest:()=>{S=load('guest');mark();save();view=null;page='home';draft=null;render();toast('Mode offline: data tersimpan di perangkat ini')},
-google:()=>{view='google';render()},
 vw:e=>{view=e.dataset.v;render()},
+mkrc:async()=>{const U=users(),u=U[S.email];if(!u)return;if(u.rh&&!confirm('Kode lama tidak akan berlaku lagi. Lanjutkan?'))return;const code=newCode();u.rs=newSalt();u.rh=await hash(code,u.rs);putUsers(U);shownCode=fmtCode(code);render()},
+copyrc:async()=>{const t=view==='recovery'&&pendLogin?pendLogin.code:shownCode;try{await navigator.clipboard.writeText(t);toast('Kode disalin')}catch(e){toast('Salin manual: '+t)}},
+rcdone:()=>{const p=pendLogin;pendLogin=null;loggedIn(p.email,p.name,p.msg)},
 eye:()=>{['#ap','#ac'].forEach(q=>{const i=$(q);if(i)i.type=i.type==='password'?'text':'password'})},
 auth:authGo,
 logout:()=>{if(S.auth==='user'&&!confirm('Keluar dari akun?'))return;save();try{localStorage.removeItem(SK)}catch(e){}const d=S.dark;S=fresh();S.dark=d;view='login';page='home';draft=null;flt={q:'',pri:'all',cat:'all'};render()},
