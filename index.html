@@ -97,7 +97,7 @@ textarea{min-height:70px;resize:vertical}
 <body>
 <div id="hero" class="hero" hidden></div>
 <div class="wrap">
-  <header><div><div class="brand">Taskify</div><div class="hi" id="hi"></div></div><button class="btn ghost sm" data-a="theme" aria-label="Ganti mode gelap">🌓</button></header>
+  <header><div><div class="brand">Taskify</div><div class="hi" id="hi"></div></div></header>
   <main id="app"></main>
 </div>
 <nav class="nav"><div>
@@ -116,21 +116,24 @@ const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&
 const p2=n=>String(n).padStart(2,'0'),loc=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
 const rel=(n,h=0,m=0)=>{const x=new Date();x.setDate(x.getDate()+n);x.setHours(h,m,0,0);return x.toISOString()};
 let id=100;const nid=()=>'t'+Date.now()+(id++);
-function seed(){const T=(i,title,cat,pri,due,status,subs,notes,dn)=>({id:i,title,cat,pri,due,status,subs:subs||[],notes:notes||'',doneAt:dn||null});
-return{onb:false,name:'Rian',dark:matchMedia('(prefers-color-scheme: dark)').matches,notif:true,gcal:false,cats:['Kuliah','Freelance','Pribadi'],tasks:[
-T('s1','Submisi Makalah IMK','Kuliah','high',rel(1,23,59),'prog',[{t:'Bab 1 & 2',d:true},{t:'Bab 3 & Kesimpulan',d:false}],'Format PDF, maks 5 MB'),
-T('s2','Revisi Desain Logo','Freelance','mid',rel(1,17,0),'todo',[],'Revisi sesuai catatan klien'),
-T('s3','Laporan Praktikum C++','Kuliah','mid',rel(4,20,0),'todo'),
-T('s4','Olahraga Sore','Pribadi','low',rel(0,18,0),'todo'),
-T('s5','Tugas Basis Data','Kuliah','high',rel(-5,23,0),'done',0,0,rel(-5,20)),
-T('s6','Kuis Pemrograman Web','Kuliah','mid',rel(-4,10,0),'done',0,0,rel(-4,9)),
-T('s7','Desain Banner Klien','Freelance','high',rel(-3,12,0),'done',0,0,rel(-3,11)),
-T('s8','Presentasi Jaringan Komputer','Kuliah','mid',rel(-2,9,0),'done',0,0,rel(-2,8)),
-T('s9','Bayar Kos','Pribadi','low',rel(-1,12,0),'done',0,0,rel(-1,10)),
-T('s10','Revisi Poster Event','Freelance','mid',rel(-1,15,0),'done',0,0,rel(-1,14)),
-T('s11','Resume Materi Algoritma','Kuliah','low',rel(0,8,0),'done',0,0,rel(0,7))]}}
-let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!S||!Array.isArray(S.tasks))S=seed();
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+function demo(){const T=(title,cat,pri,due,status,subs,notes,dn)=>({id:nid(),title,cat,pri,due,status,subs:subs||[],notes:notes||'',doneAt:dn||null});
+return[
+T('Submisi Makalah IMK','Kuliah','high',rel(1,23,59),'prog',[{t:'Bab 1 & 2',d:true},{t:'Bab 3 & Kesimpulan',d:false}],'Format PDF, maks 5 MB'),
+T('Revisi Desain Logo','Freelance','mid',rel(1,17,0),'todo',[],'Revisi sesuai catatan klien'),
+T('Laporan Praktikum C++','Kuliah','mid',rel(4,20,0),'todo'),
+T('Olahraga Sore','Pribadi','low',rel(0,18,0),'todo'),
+T('Tugas Basis Data','Kuliah','high',rel(-5,23,0),'done',0,0,rel(-5,20)),
+T('Kuis Pemrograman Web','Kuliah','mid',rel(-4,10,0),'done',0,0,rel(-4,9)),
+T('Desain Banner Klien','Freelance','high',rel(-3,12,0),'done',0,0,rel(-3,11)),
+T('Presentasi Jaringan Komputer','Kuliah','mid',rel(-2,9,0),'done',0,0,rel(-2,8)),
+T('Bayar Kos','Pribadi','low',rel(-1,12,0),'done',0,0,rel(-1,10))]}
+function fresh(){return{name:'Pengguna',dark:matchMedia('(prefers-color-scheme: dark)').matches,notif:true,gcal:false,cats:['Kuliah','Freelance','Pribadi'],tasks:[],auth:null,email:null}}
+const SK='taskify.session',dkey=(a,e)=>a==='user'?'taskify.u.'+e:'taskify.guest';
+function load(auth,email){let d=null;try{d=JSON.parse(localStorage.getItem(dkey(auth,email)))}catch(e){}
+if(!d||!Array.isArray(d.tasks)||!Array.isArray(d.cats))d=fresh();d.auth=auth;d.email=email||null;return d}
+const save=()=>{if(!S.auth)return;try{localStorage.setItem(dkey(S.auth,S.email),JSON.stringify(S));localStorage.setItem(SK,JSON.stringify({auth:S.auth,email:S.email}))}catch(e){}};
+let S;try{const ss=JSON.parse(localStorage.getItem(SK));S=ss&&ss.auth?load(ss.auth,ss.email):fresh()}catch(e){S=fresh()}
+const seen=()=>{try{return localStorage.getItem('taskify.seen')}catch(e){}},mark=()=>{try{localStorage.setItem('taskify.seen','1')}catch(e){}};
 let page='home',tab='prog',draft=null,flt={q:'',pri:'all',cat:'all'};
 const newDraft=()=>{const d=new Date();d.setDate(d.getDate()+1);d.setHours(23,59,0,0);return{title:'',cat:S.cats[0]||'Pribadi',pri:'mid',due:loc(d),notes:'',subs:[]}};
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2200)}
@@ -147,7 +150,7 @@ return`<h1>Ringkasan Hari Ini</h1>${ban}
 <div class="card"><div class="row sp"><b>Progres Minggu Ini</b><b>${pct()}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${pct()}%"></i></div></div>
 <div class="card"><b>Tambah cepat</b><div class="row" style="margin-top:8px"><input type="text" id="qa" placeholder="Ketik judul tugas lalu tekan Enter" maxlength="80"><button class="btn sm" data-a="qa">Tambah</button></div></div>
 <h2>Tugas Mendesak</h2>${urgent.length?urgent.slice(0,4).map(row).join(''):'<div class="empty">Tidak ada tugas mendesak 🎉</div>'}
-<h2>Tugas Mendatang</h2>${a.length?a.slice(0,6).map(row).join(''):'<div class="empty">Semua tugas selesai!</div>'}
+<h2>Tugas Mendatang</h2>${a.length?a.slice(0,6).map(row).join(''):`<div class="empty">${S.tasks.length?'Semua tugas selesai!':'Belum ada tugas. Tambahkan tugas pertamamu!'}</div>`}
 <button class="btn" data-a="go" data-p="add">+ Tambah Tugas Baru</button>`}
 function add(){const d=draft;return`<h1>Tambah Tugas Baru</h1><div class="card">
 <label class="f" for="f-title">Judul</label><input type="text" id="f-title" data-f="title" value="${esc(d.title)}" placeholder="mis. Submisi Makalah IMK" maxlength="80">
@@ -166,7 +169,7 @@ function board(){const q=flt.q.toLowerCase(),L=S.tasks.filter(t=>t.status===tab&
 return`<h1>Papan Proyek</h1><div class="seg" style="margin-bottom:12px">${ST.map(s=>`<button data-a="tab" data-v="${s[0]}" class="${tab===s[0]?'on':''}">${s[1]} (${S.tasks.filter(t=>t.status===s[0]).length})</button>`).join('')}</div>
 <div class="card"><input type="text" id="q" placeholder="Cari tugas…" value="${esc(flt.q)}"><div class="grid2" style="margin-top:8px"><select data-fl="pri"><option value="all">Semua prioritas</option>${Object.keys(PR).map(k=>`<option value="${k}" ${flt.pri===k?'selected':''}>${PR[k]}</option>`).join('')}</select><select data-fl="cat"><option value="all">Semua kategori</option>${S.cats.map(c=>`<option ${flt.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div></div>
 ${L.length?L.map(card).join(''):'<div class="empty">Belum ada tugas di kolom ini.</div>'}<button class="btn" data-a="go" data-p="add">+ Tambah Tugas Baru</button>`}
-function report(){const D=dn(),cats={};D.forEach(t=>cats[t.cat]=(cats[t.cat]||0)+1);const sc=pct(),lb=sc>=80?'Sangat Bagus':sc>=60?'Bagus':sc>=40?'Cukup':'Perlu ditingkatkan';
+function report(){const D=dn(),cats={};D.forEach(t=>cats[t.cat]=(cats[t.cat]||0)+1);const sc=pct(),lb=!S.tasks.length?'Belum ada data':sc>=80?'Sangat Bagus':sc>=60?'Bagus':sc>=40?'Cukup':'Perlu ditingkatkan';
 const days=[...Array(7)].map((_,k)=>{const d=new Date();d.setDate(d.getDate()-6+k);return{l:DAY[d.getDay()],n:D.filter(t=>t.doneAt&&new Date(t.doneAt).toDateString()===d.toDateString()).length}}),mx=Math.max(1,...days.map(d=>d.n));
 return`<h1>Laporan Produktivitas</h1><div class="card"><div class="stat"><b>${D.length}</b><span>Tugas selesai</span></div></div>
 <div class="card"><b>Penyelesaian per Kategori</b>${Object.keys(cats).map(c=>{const p=Math.round(cats[c]/D.length*100);return`<div style="margin-top:10px"><div class="row sp"><span>${esc(c)}</span><span>${p}%</span></div><div class="bar"><i style="width:${p}%"></i></div></div>`}).join('')||'<div class="empty">Belum ada data.</div>'}</div>
@@ -179,7 +182,7 @@ ${sw('notif',S.notif,'Pengingat & Notifikasi','Pengingat deadline dan tugas terl
 <div class="set"><b>Nama Pengguna</b><input type="text" id="nm" value="${esc(S.name)}" maxlength="30" style="margin-top:6px"></div></div>
 <div class="card"><b>Kategori & Label Kustom</b><div class="meta" style="margin:8px 0">${S.cats.map((c,i)=>`<span class="chip">${esc(c)} <button data-a="dcat" data-i="${i}" aria-label="Hapus kategori ${esc(c)}">✕</button></span>`).join('')}</div>
 <div class="row"><input type="text" id="nc" placeholder="Kategori baru" maxlength="20"><button class="btn ghost sm" data-a="acat">Tambah</button></div></div>
-<div class="card"><b>Backup & Pemulihan Data</b><div class="act"><button class="btn sm" data-a="bak">Backup (JSON)</button><button class="btn ghost sm" data-a="rst">Pulihkan</button><button class="btn danger sm" data-a="reset">Reset Data</button></div></div>`}
+<div class="card"><b>Backup & Pemulihan Data</b><div class="act"><button class="btn sm" data-a="bak">Backup (JSON)</button><button class="btn ghost sm" data-a="rst">Pulihkan</button><button class="btn ghost sm" data-a="demo">Isi Data Contoh</button><button class="btn danger sm" data-a="reset">Hapus Semua Data</button></div></div>`}
 function dl2(name,txt,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 function render(){document.documentElement.dataset.theme=S.dark?'dark':'light';$('#hi').textContent='Halo, '+S.name;
 if(page==='add'&&!draft)draft=newDraft();
@@ -194,13 +197,15 @@ const users=()=>{try{return JSON.parse(localStorage.getItem(UK))||{}}catch(e){re
 const putUsers=u=>{try{localStorage.setItem(UK,JSON.stringify(u))}catch(e){}};
 async function hash(pw,salt){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+pw));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of salt+pw)h=(h*33)^c.charCodeAt(0);return'x'+(h>>>0).toString(16)}}
 const showErr=m=>{const e=$('#err');if(e)e.textContent=m};
-const okMail=v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
-function loggedIn(email,name,msg){S.auth='user';S.email=email;S.name=name;S.onb=true;save();view=null;page='home';render();toast(msg||'Selamat datang, '+name+'!')}
+const PROV=['gmail.com','googlemail.com','yahoo.com','yahoo.co.id','ymail.com','outlook.com','hotmail.com','live.com','msn.com','icloud.com','me.com','proton.me','protonmail.com','zoho.com','gmx.com','aol.com','mail.com'];
+const INST=/\.(ac\.id|sch\.id|go\.id|mil\.id|edu|edu\.[a-z]{2}|ac\.[a-z]{2})$/;
+function okMail(v){const m=/^([a-z0-9][a-z0-9._+-]{1,62}[a-z0-9])@([a-z0-9-]+(?:\.[a-z0-9-]+)+)$/.exec(v);if(!m||/\.\./.test(m[1]))return false;return PROV.includes(m[2])||INST.test(m[2])}
+function loggedIn(email,name,msg){S=load('user',email);if(!S.name||S.name==='Pengguna')S.name=name;mark();save();view=null;page='home';draft=null;render();toast(msg||'Selamat datang, '+S.name+'!')}
 async function authGo(){
  const em=($('#ae')||{value:''}).value.trim().toLowerCase(),pw=($('#ap')||{value:''}).value,nm=($('#an')||{value:''}).value.trim(),cf=($('#ac')||{value:''}).value;
- if(!okMail(em))return showErr('Masukkan alamat email yang valid.');
+ if(!okMail(em))return showErr('Email tidak valid atau domainnya tidak dikenali. Gunakan Gmail, Yahoo, Outlook, iCloud, Proton, atau email kampus/sekolah (.ac.id, .sch.id, .edu).');
  const U=users();
- if(view==='google'){const n=em.split('@')[0].replace(/[._-]+/g,' ');const name=(U[em]&&U[em].name)||n.replace(/\b\w/g,c=>c.toUpperCase());return loggedIn(em,name,'Masuk dengan Google (simulasi) berhasil')}
+ if(view==='google'){if(!/@(gmail|googlemail)\.com$/.test(em)&&!INST.test(em.split('@')[1]))return showErr('Akun Google harus memakai Gmail atau email kampus/sekolah.');const n=em.split('@')[0].replace(/[._-]+/g,' ');const name=(U[em]&&U[em].name)||n.replace(/\b\w/g,c=>c.toUpperCase());return loggedIn(em,name,'Masuk dengan Google (simulasi) berhasil')}
  if(!pw)return showErr('Kata sandi wajib diisi.');
  if(view==='register'){
   if(!nm)return showErr('Nama lengkap wajib diisi.');
@@ -213,7 +218,7 @@ async function authGo(){
  if(!u||u.h!==await hash(pw,u.salt))return showErr('Email atau kata sandi salah.');
  loggedIn(em,u.name)}
 function hero(){const h=$('#hero');if(S.auth){h.hidden=true;h.innerHTML='';return}
- h.hidden=false;if(!view)view=S.onb?'login':'intro';
+ h.hidden=false;if(!view)view=seen()?'login':'intro';
  const eye='<button type="button" data-a="eye" aria-label="Tampilkan atau sembunyikan kata sandi">Lihat</button>';
  if(view==='intro'){h.innerHTML=`<div><div style="font-size:54px">✅</div><h1>Taskify</h1><p>Susun Tugas, Tuntaskan Target<br>Buat papan tugas pertamamu</p><button class="btn" data-a="begin">Mulai Sekarang</button></div>`;return}
  const reg=view==='register',goo=view==='google';
@@ -231,13 +236,14 @@ function hero(){const h=$('#hero');if(S.auth){h.hidden=true;h.innerHTML='';retur
  const f=$('#ae');if(f&&!matchMedia('(pointer:coarse)').matches)f.focus()}
 document.addEventListener('submit',e=>{if(e.target.id==='af'){e.preventDefault();authGo()}});
 const A={
-go:e=>go(e.dataset.p),begin:()=>{S.onb=true;save();view='login';render()},
-guest:()=>{S.auth='guest';S.onb=true;save();view=null;render();toast('Mode offline: data tersimpan di perangkat ini')},
+go:e=>go(e.dataset.p),begin:()=>{mark();view='login';render()},
+guest:()=>{S=load('guest');mark();save();view=null;page='home';draft=null;render();toast('Mode offline: data tersimpan di perangkat ini')},
 google:()=>{view='google';render()},
 vw:e=>{view=e.dataset.v;render()},
 eye:()=>{['#ap','#ac'].forEach(q=>{const i=$(q);if(i)i.type=i.type==='password'?'text':'password'})},
 auth:authGo,
-logout:()=>{if(S.auth==='user'&&!confirm('Keluar dari akun?'))return;S.auth=null;save();view='login';page='home';render()},
+logout:()=>{if(S.auth==='user'&&!confirm('Keluar dari akun?'))return;save();try{localStorage.removeItem(SK)}catch(e){}const d=S.dark;S=fresh();S.dark=d;view='login';page='home';draft=null;flt={q:'',pri:'all',cat:'all'};render()},
+demo:()=>{if(S.tasks.length&&!confirm('Tambahkan data contoh ke daftar tugas Anda?'))return;S.tasks.push(...demo());save();render();toast('Data contoh ditambahkan')},
 theme:()=>{S.dark=!S.dark;save();render()},
 tog:e=>{const t=S.tasks.find(x=>x.id===e.dataset.i);t.status=t.status==='done'?'todo':'done';t.doneAt=t.status==='done'?new Date().toISOString():null;if(t.status==='done')t.subs.forEach(s=>s.d=true);save();render();toast(t.status==='done'?'Tugas selesai 🎉':'Tugas dikembalikan')},
 qa:()=>{const i=$('#qa'),v=i.value.trim();if(!v)return toast('Tulis judul tugas dulu');const d=new Date();d.setDate(d.getDate()+1);d.setHours(23,59,0,0);addTask({title:v,cat:S.cats[0]||'Pribadi',pri:'mid',due:d});render();toast('Tugas ditambahkan')},
@@ -256,7 +262,7 @@ acat:()=>{const v=$('#nc').value.trim();if(!v)return;if(S.cats.includes(v))retur
 dcat:e=>{if(S.cats.length<2)return toast('Minimal satu kategori');S.cats.splice(+e.dataset.i,1);save();render()},
 bak:()=>{dl2('taskify-backup.json',JSON.stringify(S,null,2),'application/json');toast('Backup diunduh')},
 rst:()=>$('#file').click(),
-reset:()=>{if(!confirm('Hapus semua data dan kembali ke data contoh?'))return;const a=S.auth,m=S.email;S=seed();S.onb=true;S.auth=a;S.email=m;save();render();toast('Data direset')}};
+reset:()=>{if(!confirm('Hapus semua tugas dan kategori kustom?'))return;const o=S;S=fresh();S.name=o.name;S.dark=o.dark;S.auth=o.auth;S.email=o.email;save();render();toast('Semua data dihapus')}};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(b&&A[b.dataset.a])A[b.dataset.a](b)});
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset.f&&draft)draft[t.dataset.f]=t.value;if(t.id==='q'){flt.q=t.value;const pos=t.selectionStart;render();const q=$('#q');q.focus();q.setSelectionRange(pos,pos)}if(t.id==='nm'){S.name=t.value.trim()||'Rian';save();$('#hi').textContent='Halo, '+S.name}});
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset.fl){flt[t.dataset.fl]=t.value;render()}});
